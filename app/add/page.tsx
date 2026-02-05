@@ -32,22 +32,20 @@ export default function AddExpensePage() {
 
     useEffect(() => {
         if (userMeta) {
-            setSpentBy(userMeta.userId); // Default to self
+            setSpentBy(userMeta.$id); // Default to self (using immutable Doc ID)
             fetchTripUsers();
         }
     }, [userMeta]);
 
     const fetchTripUsers = async () => {
         try {
-            // Fetch all users. In a larger app, filter by tripKey.
-            // For now, listing all users works as we are a small group.
             const response = await databases.listDocuments(
                 APPWRITE_CONFIG.DATABASE_ID,
                 APPWRITE_CONFIG.USERS_COLLECTION_ID
             );
             setUsers(response.documents);
-            // Default split among everyone
-            setSplitAmong(response.documents.map((u: any) => u.userId));
+            // Default split among everyone (using immutable Doc IDs)
+            setSplitAmong(response.documents.map((u: any) => u.$id));
         } catch (error) {
             console.error("Failed to fetch users", error);
         }
@@ -75,8 +73,8 @@ export default function AddExpensePage() {
         setLoading(true);
 
         const expenseData = {
-            createdBy: userMeta?.userId || "unknown",
-            spentBy: spentBy || userMeta?.userId,
+            createdBy: userMeta?.$id || "unknown", // Use Doc ID
+            spentBy: spentBy || userMeta?.$id, // Use Doc ID
             amount: parseFloat(amount),
             purpose,
             category,

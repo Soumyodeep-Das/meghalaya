@@ -9,12 +9,13 @@ import { Trash2 } from "lucide-react";
 interface ExpenseCardProps {
     expense: Expense;
     currentUser: UserMeta | null;
+    userMap: Record<string, string>;
     onDelete: (id: string) => void;
     onRequestDelete: (id: string) => void;
 }
 
-export function ExpenseCard({ expense, currentUser, onDelete, onRequestDelete }: ExpenseCardProps) {
-    const isOwner = currentUser?.userId === expense.createdBy;
+export function ExpenseCard({ expense, currentUser, userMap, onDelete, onRequestDelete }: ExpenseCardProps) {
+    const isOwner = currentUser?.$id === expense.createdBy; // Check against Doc ID
     const isAdmin = currentUser?.role === "admin";
 
     const handleDelete = () => {
@@ -36,6 +37,8 @@ export function ExpenseCard({ expense, currentUser, onDelete, onRequestDelete }:
         misc: "bg-gray-100 text-gray-800",
     };
 
+    const spenderName = userMap[expense.spentBy] || "Unknown";
+
     return (
         <Card className="mb-4">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -49,7 +52,7 @@ export function ExpenseCard({ expense, currentUser, onDelete, onRequestDelete }:
             </CardHeader>
             <CardContent>
                 <p className="font-medium text-foreground">{expense.purpose}</p>
-                <p className="text-sm text-muted-foreground">Paid by: {expense.spentBy === currentUser?.userId ? "You" : expense.spentBy}</p>
+                <p className="text-sm text-muted-foreground">Paid by: {expense.spentBy === currentUser?.$id ? "You" : spenderName}</p>
             </CardContent>
             <CardFooter className="flex justify-end pt-0">
                 {(isOwner || isAdmin) && (

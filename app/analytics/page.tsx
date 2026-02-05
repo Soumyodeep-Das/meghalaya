@@ -13,22 +13,39 @@ export default function AnalyticsPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [userMap, setUserMap] = useState<Record<string, string>>({});
+
     useEffect(() => {
-        const fetchExpenses = async () => {
-            try {
-                const response = await databases.listDocuments(
+        const loadData = async () => {
+            // Parallel fetch
+            const [expenseParams, userResponse] = await Promise.all([
+                databases.listDocuments(
                     APPWRITE_CONFIG.DATABASE_ID,
                     APPWRITE_CONFIG.EXPENSES_COLLECTION_ID,
                     [Query.limit(100)]
-                );
-                setExpenses(response.documents as unknown as Expense[]);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
+                ),
+                databases.listDocuments(
+                    APPWRITE_CONFIG.DATABASE_ID,
+                    APPWRITE_CONFIG.USERS_COLLECTION_ID
+                )
+            ]);
+
+            setExpenses(expenseParams.documents as unknown as Expense[]);
+
+            const map: Record<string, string> = {};
+            userResponse.documents.forEach((doc: any) => {
+                map[doc.$id] = doc.name;
+            });
+            setUserMap(map);
+            setLoading(false);
         };
-        fetchExpenses();
+
+        try {
+            loadData();
+        } catch (error) {
+            console.error(error);
+            setLoading(false);
+        }
     }, []);
 
     if (loading) {
@@ -103,9 +120,9 @@ export default function AnalyticsPage() {
                     </CardHeader>
                     <CardContent>
                         <ul className="space-y-2">
-                            {Object.entries(spenderData).map(([user, amount]) => (
-                                <li key={user} className="flex justify-between border-b pb-2">
-                                    <span>{user}</span> // In real app, map ID to Name
+                            {Object.entries(spenderData).map(([userId, amount]) => (
+                                <li key={userId} className="flex justify-between border-b pb-2">
+                                    <span>{userMap[userId] || "Unknown"}</span>
                                     <span className="font-bold">${amount.toFixed(2)}</span>
                                 </li>
                             ))}

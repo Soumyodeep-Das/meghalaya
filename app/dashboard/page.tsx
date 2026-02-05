@@ -20,6 +20,8 @@ export default function DashboardPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [userMap, setUserMap] = useState<Record<string, string>>({});
+
     const fetchExpenses = async () => {
         try {
             const response = await databases.listDocuments(
@@ -31,6 +33,22 @@ export default function DashboardPage() {
         } catch (error) {
             console.error("Failed to fetch expenses", error);
             return [];
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await databases.listDocuments(
+                APPWRITE_CONFIG.DATABASE_ID,
+                APPWRITE_CONFIG.USERS_COLLECTION_ID
+            );
+            const map: Record<string, string> = {};
+            response.documents.forEach((doc: any) => {
+                map[doc.$id] = doc.name;
+            });
+            setUserMap(map);
+        } catch (error) {
+            console.error("Failed to fetch users", error);
         }
     };
 
@@ -46,7 +64,7 @@ export default function DashboardPage() {
     const loadData = async () => {
         setLoading(true);
         if (isOnline) {
-            const serverData = await fetchExpenses();
+            const [serverData, _] = await Promise.all([fetchExpenses(), fetchUsers()]);
             setExpenses(serverData);
         } else {
             // Load cached logic? Or just IDB? 
@@ -58,6 +76,12 @@ export default function DashboardPage() {
             if (cached) {
                 setExpenses(JSON.parse(cached));
             }
+            // Ideally should cache userMap too, skipping for now as names aren't critical offline (can trigger fetch if online)
+            const cachedUsers = localStorage.getItem("users_cache");
+            if (cachedUsers) {
+                setUserMap(JSON.parse(cachedUsers));
+            }
+
             const local = await fetchLocal();
             // Merge or append? 
             // Simple append
@@ -74,7 +98,10 @@ export default function DashboardPage() {
         if (expenses.length > 0 && isOnline) {
             localStorage.setItem("expense_cache", JSON.stringify(expenses));
         }
-    }, [expenses, isOnline]);
+        if (Object.keys(userMap).length > 0 && isOnline) {
+            localStorage.setItem("users_cache", JSON.stringify(userMap));
+        }
+    }, [expenses, userMap, isOnline]);
 
 
     const handleDelete = async (id: string) => {
@@ -138,6 +165,7 @@ export default function DashboardPage() {
                                 key={expense.$id}
                                 expense={expense}
                                 currentUser={userMeta}
+                                userMap={userMap}
                                 onDelete={handleDelete}
                                 onRequestDelete={handleRequestDelete}
                             />

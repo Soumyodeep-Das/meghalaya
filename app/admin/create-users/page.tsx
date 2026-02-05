@@ -17,7 +17,8 @@ interface NewUser {
 
 export default function AdminCreateUsers() {
     const { userMeta } = useAuth();
-    const [users, setUsers] = useState<NewUser[]>(Array(6).fill({ name: "", key: "" }));
+    // Use Array.from to generate UNIQUE objects, avoiding shared reference issues
+    const [users, setUsers] = useState<NewUser[]>(Array.from({ length: 6 }, () => ({ name: "", key: "" })));
     const [loading, setLoading] = useState(false);
 
     // Only Admin
@@ -29,26 +30,37 @@ export default function AdminCreateUsers() {
 
     const handleUpdateName = (index: number, name: string) => {
         const newUsers = [...users];
-        newUsers[index] = { ...newUsers[index], name, key: newUsers[index].key || generateKey() };
+        // Ensure we preserve the key if it exists, or generate a new one
+        const key = newUsers[index].key || generateKey();
+        newUsers[index] = { name, key };
         setUsers(newUsers);
     };
 
     const handleSave = async () => {
+        const validUsers = users.filter(u => u.name.trim() !== "");
+
+        if (validUsers.length === 0) {
+            toast.error("Please enter at least one name");
+            return;
+        }
+
         setLoading(true);
         try {
-            const promises = users.filter(u => u.name).map(async u => {
+            const promises = validUsers.map(async u => {
+                const payload = {
+                    name: u.name,
+                    tripKey: u.key,
+                    userId: "placeholder-" + ID.unique(), // Unique placeholder to avoid unique constraint if userId is unique
+                    role: "user",
+                    createdBy: userMeta?.userId || "admin",
+                };
+
                 try {
                     await databases.createDocument(
                         APPWRITE_CONFIG.DATABASE_ID,
                         APPWRITE_CONFIG.USERS_COLLECTION_ID,
                         ID.unique(),
-                        {
-                            name: u.name,
-                            tripKey: u.key,
-                            userId: "placeholder",
-                            role: "user",
-                            createdBy: userMeta?.userId || "admin",
-                        }
+                        payload
                     );
                 } catch (error: any) {
                     if (error.code === 409 || error.type === "document_already_exists") {
@@ -61,7 +73,7 @@ export default function AdminCreateUsers() {
             await Promise.all(promises);
             toast.success("Users created!");
         } catch (error: any) {
-            console.error(error);
+            console.error("Batch Error:", error);
             toast.error("Failed to create users");
         } finally {
             setLoading(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { databases, APPWRITE_CONFIG } from "@/lib/appwrite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,13 @@ export default function TripKeyPage() {
     const { user, userMeta, refreshAuth } = useAuth();
     const router = useRouter();
 
-    if (userMeta) {
-        router.push("/dashboard");
-        return null;
-    }
+    useEffect(() => {
+        if (userMeta) {
+            router.push("/dashboard");
+        }
+    }, [userMeta, router]);
+
+    if (userMeta) return null;
 
     const handleJoin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,8 +44,8 @@ export default function TripKeyPage() {
 
             const doc = response.documents[0];
 
-            if (doc.userId && doc.userId !== "placeholder") {
-                // If userId is already set and it's not a placeholder
+            if (doc.userId && !doc.userId.startsWith("placeholder")) {
+                // If userId is real (doesn't start with placeholder), it's claimed
                 throw new Error("This key has already been claimed.");
             }
 
