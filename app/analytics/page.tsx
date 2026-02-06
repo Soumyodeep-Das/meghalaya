@@ -117,18 +117,65 @@ export default function AnalyticsPage() {
             return sum;
         }, 0);
 
+        // Calculate Repayments (Settlements)
+        // If I marked as PAID, I effectively "Spent" that amount (RepaymentsMade)
+        // If someone marked as PAID to me, I effectively "Un-spent" that amount (RepaymentsReceived)
+        let repaymentsMade = 0;
+        let repaymentsReceived = 0;
+
+        expenses.forEach(e => {
+            if (!e.repaymentStatus) return;
+            try {
+                const statusMap = JSON.parse(e.repaymentStatus);
+
+                // Calculate share amount for this expense
+                let amountPerPerson = 0;
+                if (e.splitMode === 'equal') {
+                    amountPerPerson = userCount > 0 ? e.amount / userCount : 0;
+                } else if (e.splitMode === 'custom') {
+                    amountPerPerson = e.splitAmong.length > 0 ? e.amount / e.splitAmong.length : 0;
+                }
+
+                // Check if *this person* made a repayment (is a debtor who paid)
+                // This person is in splitAmong AND marked 'paid' AND is NOT the spender
+                // (Self-split doesn't count as repayment, usually handled by logic, but let's be safe: creditor != debtor)
+                if (ids.some(myId => statusMap[myId] === 'paid' && e.splitAmong.includes(myId))) {
+                    // Only count if I am NOT the spender (cannot repay myself)
+                    if (!ids.includes(e.spentBy)) {
+                        repaymentsMade += amountPerPerson;
+                    }
+                }
+
+                // Check if *this person* received a repayment (is the spender)
+                if (ids.includes(e.spentBy)) {
+                    // Sum up all OTHER people who paid
+                    e.splitAmong.forEach(borrowerId => {
+                        if (!ids.includes(borrowerId) && statusMap[borrowerId] === 'paid') {
+                            repaymentsReceived += amountPerPerson;
+                        }
+                    });
+                }
+
+            } catch (err) {
+                console.error("Failed to parse repayment", err);
+            }
+        });
+
+        // Net Paid = What I put in + What I gave back - What I got back
+        const netPaid = spent + repaymentsMade - repaymentsReceived;
+
         if (spent === 0 && share === 0) return null;
 
         // Create initials for chart (First Last -> FL)
         const shortName = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
 
-        const balance = share - spent;
+        const balance = share - netPaid;
 
         return {
             uid: ids[0], // Use first ID as key
             name,
             shortName,
-            Spent: spent,
+            Spent: netPaid, // Show effective spending (Direct + Repaid - Reimbursed)
             Share: share,
             Balance: balance
         };
@@ -221,7 +268,7 @@ export default function AnalyticsPage() {
                                     <div>
                                         <p className="font-medium">{data.name}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            Paid: <span className="text-green-600 font-semibold">₹{data.Spent.toFixed(0)}</span>
+                                            Net Paid: <span className="text-green-600 font-semibold">₹{data.Spent.toFixed(0)}</span>
                                         </p>
                                     </div>
                                     <div className="text-right">

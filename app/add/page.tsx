@@ -41,38 +41,75 @@ export default function AddExpensePage() {
 
     const fetchTripUsers = async () => {
         try {
-            const [userResponse, settingsResponse] = await Promise.all([
-                databases.listDocuments(
-                    APPWRITE_CONFIG.DATABASE_ID,
-                    APPWRITE_CONFIG.USERS_COLLECTION_ID
-                ),
-                databases.getDocument(
-                    APPWRITE_CONFIG.DATABASE_ID,
-                    APPWRITE_CONFIG.EXPENSES_COLLECTION_ID,
-                    APPWRITE_CONFIG.SETTINGS_DOC_ID
-                ).catch(() => null) // Ignore mismatch/404
-            ]);
+            if (isOnline) {
+                const [userResponse, settingsResponse] = await Promise.all([
+                    databases.listDocuments(
+                        APPWRITE_CONFIG.DATABASE_ID,
+                        APPWRITE_CONFIG.USERS_COLLECTION_ID
+                    ),
+                    databases.getDocument(
+                        APPWRITE_CONFIG.DATABASE_ID,
+                        APPWRITE_CONFIG.EXPENSES_COLLECTION_ID,
+                        APPWRITE_CONFIG.SETTINGS_DOC_ID
+                    ).catch(() => null) // Ignore mismatch/404
+                ]);
 
-            setUsers(userResponse.documents);
-            // Default split among everyone (using immutable Doc IDs)
-            setSplitAmong(userResponse.documents.map((u: any) => u.$id));
+                setUsers(userResponse.documents);
+                // Default split among everyone (using immutable Doc IDs)
+                setSplitAmong(userResponse.documents.map((u: any) => u.$id));
 
-            if (settingsResponse && settingsResponse.repaymentStatus) {
-                try {
-                    const parsed = JSON.parse(settingsResponse.repaymentStatus);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setAvailableCategories(parsed);
-                        // If current category default 'food' is not in list, pick first
-                        if (!parsed.includes(category) && parsed.length > 0) {
-                            setCategory(parsed[0]);
+                // Cache users
+                localStorage.setItem("users_list_cache", JSON.stringify(userResponse.documents));
+
+                if (settingsResponse && settingsResponse.repaymentStatus) {
+                    try {
+                        const parsed = JSON.parse(settingsResponse.repaymentStatus);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            setAvailableCategories(parsed);
+                            localStorage.setItem("categories_cache", JSON.stringify(parsed));
+                            // If current category default 'food' is not in list, pick first
+                            if (!parsed.includes(category) && parsed.length > 0) {
+                                setCategory(parsed[0]);
+                            }
                         }
+                    } catch (e) {
+                        console.error("Failed to parse categories", e);
                     }
-                } catch (e) {
-                    console.error("Failed to parse categories", e);
+                }
+            } else {
+                // If offline, try to load from cache
+                const cachedUsers = localStorage.getItem("users_list_cache");
+                if (cachedUsers) {
+                    const parsedUsers = JSON.parse(cachedUsers);
+                    setUsers(parsedUsers);
+                    setSplitAmong(parsedUsers.map((u: any) => u.$id));
+                    toast("Using offline data for users", { icon: "📡" });
+                }
+                const cachedCategories = localStorage.getItem("categories_cache");
+                if (cachedCategories) {
+                    const parsedCategories = JSON.parse(cachedCategories);
+                    setAvailableCategories(parsedCategories);
+                    toast("Using offline data for categories", { icon: "📡" });
+                    if (!parsedCategories.includes(category) && parsedCategories.length > 0) {
+                        setCategory(parsedCategories[0]);
+                    }
                 }
             }
         } catch (error) {
             console.error("Failed to fetch initial data", error);
+            // Fallback to offline cache even if online fetch failed (e.g. timeout)
+            const cachedUsers = localStorage.getItem("users_list_cache");
+            if (cachedUsers) {
+                const parsedUsers = JSON.parse(cachedUsers);
+                setUsers(parsedUsers);
+                setSplitAmong(parsedUsers.map((u: any) => u.$id));
+                toast("Using offline data (fetch failed)", { icon: "📡" });
+            }
+            const cachedCategories = localStorage.getItem("categories_cache");
+            if (cachedCategories) {
+                const parsedCategories = JSON.parse(cachedCategories);
+                setAvailableCategories(parsedCategories);
+            }
         }
     };
 
