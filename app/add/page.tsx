@@ -129,11 +129,11 @@ export default function AddExpensePage() {
                                     onChange={(e) => setSpentBy(e.target.value)}
                                 >
                                     {users.map(u => (
-                                        <option key={u.userId} value={u.userId}>
+                                        <option key={u.$id} value={u.$id}>
                                             {u.name} {u.userId === userMeta?.userId ? "(You)" : ""}
                                         </option>
                                     ))}
-                                    {users.length === 0 && <option value={userMeta?.userId || ""}>Loading users...</option>}
+                                    {users.length === 0 && <option value={userMeta?.$id || ""}>Loading users...</option>}
                                 </select>
                             </div>
 
@@ -183,13 +183,13 @@ export default function AddExpensePage() {
                                     <Label className="mb-2 block">Select Involved Members:</Label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {users.map(u => (
-                                            <div key={u.userId} className="flex items-center space-x-2">
+                                            <div key={u.$id} className="flex items-center space-x-2">
                                                 <Checkbox
-                                                    id={`user-${u.userId}`}
-                                                    checked={splitAmong.includes(u.userId)}
-                                                    onCheckedChange={(checked) => handleCheckboxChange(u.userId, checked as boolean)}
+                                                    id={`user-${u.$id}`}
+                                                    checked={splitAmong.includes(u.$id)}
+                                                    onCheckedChange={(checked) => handleCheckboxChange(u.$id, checked as boolean)}
                                                 />
-                                                <Label htmlFor={`user-${u.userId}`} className="cursor-pointer text-sm font-normal">
+                                                <Label htmlFor={`user-${u.$id}`} className="cursor-pointer text-sm font-normal">
                                                     {u.name}
                                                 </Label>
                                             </div>

@@ -35,6 +35,10 @@ export default function AnalyticsPage() {
             const map: Record<string, string> = {};
             userResponse.documents.forEach((doc: any) => {
                 map[doc.$id] = doc.name;
+                // Also map userId (Auth ID) for backward compatibility with older expenses
+                if (doc.userId) {
+                    map[doc.userId] = doc.name;
+                }
             });
             setUserMap(map);
         };

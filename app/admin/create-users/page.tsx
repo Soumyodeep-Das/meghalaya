@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { databases, APPWRITE_CONFIG } from "@/lib/appwrite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
-import { ID } from "appwrite";
+import { ID, Query } from "appwrite";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 interface NewUser {
@@ -21,8 +21,38 @@ export default function AdminCreateUsers() {
     const [users, setUsers] = useState<NewUser[]>(Array.from({ length: 6 }, () => ({ name: "", key: "" })));
     const [loading, setLoading] = useState(false);
 
-    // Only Admin
+    // Fetch existing users on mount
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await databases.listDocuments(
+                    APPWRITE_CONFIG.DATABASE_ID,
+                    APPWRITE_CONFIG.USERS_COLLECTION_ID,
+                    [Query.limit(100)]
+                );
 
+                // Map existing users to the state format
+                const existingUsers = response.documents.map((doc: any) => ({
+                    name: doc.name,
+                    key: doc.tripKey
+                }));
+
+                // Fill the rest with empty slots up to 6 (or more if existing > 6)
+                const totalSlots = Math.max(existingUsers.length, 6);
+                const mergedUsers = Array.from({ length: totalSlots }, (_, i) => {
+                    if (i < existingUsers.length) return existingUsers[i];
+                    return { name: "", key: "" };
+                });
+
+                setUsers(mergedUsers);
+            } catch (error) {
+                console.error("Failed to fetch users", error);
+                toast.error("Failed to load existing users");
+            }
+        };
+
+        fetchUsers();
+    }, []);
 
     const generateKey = () => {
         return Math.random().toString(36).substring(2, 8).toUpperCase();
