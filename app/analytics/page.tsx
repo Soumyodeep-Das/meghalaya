@@ -37,13 +37,13 @@ export default function AnalyticsPage() {
                 map[doc.$id] = doc.name;
             });
             setUserMap(map);
-            setLoading(false);
         };
 
         try {
             loadData();
         } catch (error) {
             console.error(error);
+        } finally {
             setLoading(false);
         }
     }, []);
@@ -83,36 +83,11 @@ export default function AnalyticsPage() {
                         <CardTitle>Total Trip Cost</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-4xl font-bold text-primary">${totalSpent.toFixed(2)}</div>
+                        <div className="text-4xl font-bold text-primary">₹{totalSpent.toFixed(2)}</div>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Category Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={chartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                {/* ... pie chart ... */}
 
                 <Card>
                     <CardHeader>
@@ -123,7 +98,7 @@ export default function AnalyticsPage() {
                             {Object.entries(spenderData).map(([userId, amount]) => (
                                 <li key={userId} className="flex justify-between border-b pb-2">
                                     <span>{userMap[userId] || "Unknown"}</span>
-                                    <span className="font-bold">${amount.toFixed(2)}</span>
+                                    <span className="font-bold">₹{amount.toFixed(2)}</span>
                                 </li>
                             ))}
                         </ul>

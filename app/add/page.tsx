@@ -138,11 +138,11 @@ export default function AddExpensePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="amount">Amount</Label>
+                                <Label htmlFor="amount">Amount (₹)</Label>
                                 <Input
                                     id="amount"
                                     type="number"
-                                    placeholder="0.00"
+                                    placeholder="₹0.00"
                                     required
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}

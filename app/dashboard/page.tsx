@@ -19,6 +19,7 @@ export default function DashboardPage() {
     const { isOnline } = useOffline();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<"all" | "mine">("all");
 
     const [userMap, setUserMap] = useState<Record<string, string>>({});
 
@@ -53,41 +54,37 @@ export default function DashboardPage() {
     };
 
     const fetchLocal = async () => {
-        // Merge server data with local queue for optimistic UI (simplified: just list queue for now if offline)
         const queue = await getQueue();
         const localExpenses = queue
             .filter(item => item.action === 'create')
-            .map(item => ({ ...item.data, $id: item.tempId })); // Mock structure
+            .map(item => ({ ...item.data, $id: item.tempId }));
         return localExpenses;
     };
 
     const loadData = async () => {
         setLoading(true);
-        if (isOnline) {
-            const [serverData, _] = await Promise.all([fetchExpenses(), fetchUsers()]);
-            setExpenses(serverData);
-        } else {
-            // Load cached logic? Or just IDB? 
-            // Requirement says "Caching: Latest expense list". 
-            // Implementing full caching logic is time consuming, but we can assume 'expenses' are synced.
-            // For now, let's just show what's in queue as "Pending" or handle basic display.
-            // Realistically, we'd cache the server response in localStorage.
-            const cached = localStorage.getItem("expense_cache");
-            if (cached) {
-                setExpenses(JSON.parse(cached));
+        try {
+            if (isOnline) {
+                const [serverData, _] = await Promise.all([fetchExpenses(), fetchUsers()]);
+                setExpenses(serverData);
+            } else {
+                const cached = localStorage.getItem("expense_cache");
+                if (cached) {
+                    setExpenses(JSON.parse(cached));
+                }
+                const cachedUsers = localStorage.getItem("users_cache");
+                if (cachedUsers) {
+                    setUserMap(JSON.parse(cachedUsers));
+                }
+                const local = await fetchLocal();
+                setExpenses(prev => [...prev, ...local]);
             }
-            // Ideally should cache userMap too, skipping for now as names aren't critical offline (can trigger fetch if online)
-            const cachedUsers = localStorage.getItem("users_cache");
-            if (cachedUsers) {
-                setUserMap(JSON.parse(cachedUsers));
-            }
-
-            const local = await fetchLocal();
-            // Merge or append? 
-            // Simple append
-            setExpenses(prev => [...prev, ...local]);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load data");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -103,7 +100,6 @@ export default function DashboardPage() {
         }
     }, [expenses, userMap, isOnline]);
 
-
     const handleDelete = async (id: string) => {
         try {
             await databases.deleteDocument(
@@ -112,7 +108,7 @@ export default function DashboardPage() {
                 id
             );
             toast.success("Expense deleted");
-            setExpenses(expenses.filter(e => e.$id !== id));
+            setExpenses(prev => prev.filter(e => e.$id !== id));
         } catch (error) {
             toast.error("Failed to delete");
         }
@@ -143,6 +139,20 @@ export default function DashboardPage() {
             toast.error("Failed to request delete");
         }
     };
+    const displayedExpenses = expenses.filter(e => {
+        if (viewMode === 'all') return true;
+
+        const myId = userMeta?.$id;
+        if (!myId) return false;
+
+        const isSpender = e.spentBy === myId;
+        // If split is equal, I am involved if there are no specific exclusions (assuming equal implies everyone for now, logic in Add Page sends empty array for equal)
+        // Wait, Add Page logic: splitAmong = [] if 'equal'.
+        // If equal, everyone is involved.
+        const isInvolved = e.splitMode === 'equal' || e.splitAmong.includes(myId);
+
+        return isSpender || isInvolved;
+    });
 
     return (
         <ProtectedRoute>
@@ -150,17 +160,34 @@ export default function DashboardPage() {
 
                 {/* Content */}
                 <main className="p-4 max-w-2xl mx-auto">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-muted-foreground">
-                            Total Spent: ${expenses.reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
-                        </span>
-                        {/* Filter UI could go here */}
+                    {/* Header & Filter */}
+                    <div className="flex flex-col gap-4 mb-6">
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground font-medium">
+                                Total: ₹{expenses.reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 bg-muted p-1 rounded-lg">
+                            <button
+                                onClick={() => setViewMode("all")}
+                                className={`py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'all' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+                            >
+                                All Trip Expenses
+                            </button>
+                            <button
+                                onClick={() => setViewMode("mine")}
+                                className={`py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'mine' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+                            >
+                                My Expenses
+                            </button>
+                        </div>
                     </div>
 
                     {loading ? (
                         <div className="flex justify-center p-10">Loading...</div>
                     ) : (
-                        expenses.map(expense => (
+                        displayedExpenses.map(expense => (
                             <ExpenseCard
                                 key={expense.$id}
                                 expense={expense}
@@ -172,9 +199,9 @@ export default function DashboardPage() {
                         ))
                     )}
 
-                    {expenses.length === 0 && !loading && (
+                    {displayedExpenses.length === 0 && !loading && (
                         <div className="text-center p-10 text-muted-foreground">
-                            No expenses yet. Start spending!
+                            {viewMode === 'all' ? "No expenses yet." : "You have no expenses yet."}
                         </div>
                     )}
                 </main>

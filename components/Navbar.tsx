@@ -20,6 +20,7 @@ export default function Navbar() {
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
 
                 {/* Left: Logo/Home */}
+                {/* Left: Logo/Home */}
                 <div className="flex items-center gap-2">
                     <Link href="/dashboard" className="font-bold text-lg tracking-tight">
                         Meghalaya
@@ -31,6 +32,16 @@ export default function Navbar() {
                         </div>
                     )}
                 </div>
+
+                {/* Middle: User Info (Name & Trip Key) */}
+                {userMeta && (
+                    <div className="flex flex-col items-center leading-tight mx-2">
+                        <span className="text-xs sm:text-sm font-semibold truncate max-w-[100px] sm:max-w-[150px]">{userMeta.name}</span>
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded">
+                            {userMeta.tripKey}
+                        </span>
+                    </div>
+                )}
 
                 {/* Right: Nav Actions */}
                 <div className="flex items-center gap-1 md:gap-2">

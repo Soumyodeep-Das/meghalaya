@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Expense, UserMeta } from "@/types";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
+import { ExpenseDetailsDialog } from "./ExpenseDetailsDialog";
 
 interface ExpenseCardProps {
     expense: Expense;
@@ -40,23 +41,27 @@ export function ExpenseCard({ expense, currentUser, userMap, onDelete, onRequest
     const spenderName = userMap[expense.spentBy] || "Unknown";
 
     return (
-        <Card className="mb-4">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="text-lg font-bold">${expense.amount.toFixed(2)}</CardTitle>
-                    <CardDescription>{new Date(expense.timestamp).toLocaleDateString()}</CardDescription>
+        <Card className="mb-4 relative">
+            <ExpenseDetailsDialog expense={expense} userMap={userMap}>
+                <div className="cursor-pointer transition-colors hover:bg-muted/30">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-lg font-bold">₹{expense.amount.toFixed(2)}</CardTitle>
+                            <CardDescription>{new Date(expense.timestamp).toLocaleDateString()}</CardDescription>
+                        </div>
+                        <span className={cn("px-2 py-1 rounded text-xs uppercase font-bold", categoryColors[expense.category as keyof typeof categoryColors])}>
+                            {expense.category}
+                        </span>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="font-medium text-foreground">{expense.purpose}</p>
+                        <p className="text-sm text-muted-foreground">Paid by: {expense.spentBy === currentUser?.$id ? "You" : spenderName}</p>
+                    </CardContent>
                 </div>
-                <span className={cn("px-2 py-1 rounded text-xs uppercase font-bold", categoryColors[expense.category as keyof typeof categoryColors])}>
-                    {expense.category}
-                </span>
-            </CardHeader>
-            <CardContent>
-                <p className="font-medium text-foreground">{expense.purpose}</p>
-                <p className="text-sm text-muted-foreground">Paid by: {expense.spentBy === currentUser?.$id ? "You" : spenderName}</p>
-            </CardContent>
-            <CardFooter className="flex justify-end pt-0">
+            </ExpenseDetailsDialog>
+            <CardFooter className="flex justify-end pt-0 absolute bottom-2 right-2 pointer-events-auto">
                 {(isOwner || isAdmin) && (
-                    <Button variant="ghost" size="icon" onClick={handleDelete}>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                 )}
