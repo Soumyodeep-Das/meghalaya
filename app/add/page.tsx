@@ -30,6 +30,7 @@ export default function AddExpensePage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [paymentMode, setPaymentMode] = useState("online");
+    const [availableCategories, setAvailableCategories] = useState<string[]>(["food", "fuel", "hotel", "misc"]);
 
     useEffect(() => {
         if (userMeta) {
@@ -40,15 +41,38 @@ export default function AddExpensePage() {
 
     const fetchTripUsers = async () => {
         try {
-            const response = await databases.listDocuments(
-                APPWRITE_CONFIG.DATABASE_ID,
-                APPWRITE_CONFIG.USERS_COLLECTION_ID
-            );
-            setUsers(response.documents);
+            const [userResponse, settingsResponse] = await Promise.all([
+                databases.listDocuments(
+                    APPWRITE_CONFIG.DATABASE_ID,
+                    APPWRITE_CONFIG.USERS_COLLECTION_ID
+                ),
+                databases.getDocument(
+                    APPWRITE_CONFIG.DATABASE_ID,
+                    APPWRITE_CONFIG.EXPENSES_COLLECTION_ID,
+                    APPWRITE_CONFIG.SETTINGS_DOC_ID
+                ).catch(() => null) // Ignore mismatch/404
+            ]);
+
+            setUsers(userResponse.documents);
             // Default split among everyone (using immutable Doc IDs)
-            setSplitAmong(response.documents.map((u: any) => u.$id));
+            setSplitAmong(userResponse.documents.map((u: any) => u.$id));
+
+            if (settingsResponse && settingsResponse.repaymentStatus) {
+                try {
+                    const parsed = JSON.parse(settingsResponse.repaymentStatus);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setAvailableCategories(parsed);
+                        // If current category default 'food' is not in list, pick first
+                        if (!parsed.includes(category) && parsed.length > 0) {
+                            setCategory(parsed[0]);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to parse categories", e);
+                }
+            }
         } catch (error) {
-            console.error("Failed to fetch users", error);
+            console.error("Failed to fetch initial data", error);
         }
     };
 
@@ -188,10 +212,9 @@ export default function AddExpensePage() {
                             <div className="space-y-2">
                                 <Label>Category</Label>
                                 <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                                    <option value="food">Food</option>
-                                    <option value="fuel">Fuel</option>
-                                    <option value="hotel">Hotel</option>
-                                    <option value="misc">Misc</option>
+                                    {availableCategories.map(cat => (
+                                        <option key={cat} value={cat} className="capitalize">{cat}</option>
+                                    ))}
                                 </Select>
                             </div>
 

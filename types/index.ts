@@ -14,7 +14,7 @@ export interface Expense {
     spentBy: string; // userId of the person who paid
     amount: number;
     purpose: string;
-    category: "food" | "fuel" | "hotel" | "misc";
+    category: string;
     splitMode: "equal" | "custom";
     splitAmong: string[]; // array of userIds
     receipt: string | null; // URL or File ID

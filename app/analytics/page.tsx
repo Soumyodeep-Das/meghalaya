@@ -3,17 +3,19 @@
 import { useEffect, useState } from "react";
 import { databases, APPWRITE_CONFIG } from "@/lib/appwrite";
 import { Expense } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Loader2 } from "lucide-react";
 import { Query } from "appwrite";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { calculateShare } from "@/lib/utils";
 
 export default function AnalyticsPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [userMap, setUserMap] = useState<Record<string, string>>({});
+    const [userCount, setUserCount] = useState(0);
 
     useEffect(() => {
         const loadData = async () => {
@@ -30,7 +32,8 @@ export default function AnalyticsPage() {
                 )
             ]);
 
-            setExpenses(expenseParams.documents as unknown as Expense[]);
+            setExpenses((expenseParams.documents as unknown as Expense[]).filter(e => e.category !== 'SETTINGS'));
+            setUserCount(userResponse.total);
 
             const map: Record<string, string> = {};
             userResponse.documents.forEach((doc: any) => {
@@ -64,18 +67,72 @@ export default function AnalyticsPage() {
         return acc;
     }, {} as Record<string, number>);
 
-    const chartData = Object.keys(categoryData).map(key => ({
-        name: key,
+    const pieChartData = Object.keys(categoryData).map(key => ({
+        name: key.charAt(0).toUpperCase() + key.slice(1),
         value: categoryData[key]
     }));
 
     const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28'];
 
-    // Per Person Breakdown (Spent By)
-    const spenderData = expenses.reduce((acc, curr) => {
-        acc[curr.spentBy] = (acc[curr.spentBy] || 0) + curr.amount;
-        return acc;
-    }, {} as Record<string, number>);
+    // Group Unique Users by Name to handle multiple IDs (Auth vs Legacy)
+    // Invert userMap: Name -> [id1, id2, ...]
+    const nameToIds: Record<string, string[]> = {};
+
+    // Populate from userMap
+    Object.entries(userMap).forEach(([id, name]) => {
+        if (!nameToIds[name]) nameToIds[name] = [];
+        if (!nameToIds[name].includes(id)) nameToIds[name].push(id);
+    });
+
+    // Also scan expenses for any IDs not in userMap (fallback)
+    expenses.forEach(e => {
+        const spenderName = userMap[e.spentBy] || "Unknown";
+        if (spenderName !== "Unknown") {
+            if (!nameToIds[spenderName]) nameToIds[spenderName] = [];
+            if (!nameToIds[spenderName].includes(e.spentBy)) nameToIds[spenderName].push(e.spentBy);
+        }
+    });
+
+    const uniqueNames = Object.keys(nameToIds).filter(Boolean);
+
+    const financialData = uniqueNames.map(name => {
+        const ids = nameToIds[name];
+
+        // Total Spent by this person (matches ANY of their IDs)
+        const spent = expenses
+            .filter(e => ids.includes(e.spentBy))
+            .reduce((sum, e) => sum + e.amount, 0);
+
+        // Total Share (Cost) for this person
+        const share = expenses.reduce((sum, e) => {
+            const isCustomInvolved = e.splitMode === 'custom' && ids.some(id => e.splitAmong.includes(id));
+            const isEqualInvolved = e.splitMode === 'equal';
+
+            if (isEqualInvolved) {
+                return sum + (userCount > 0 ? e.amount / userCount : 0);
+            } else if (isCustomInvolved) {
+                return sum + (e.splitAmong.length > 0 ? e.amount / e.splitAmong.length : 0);
+            }
+
+            return sum;
+        }, 0);
+
+        if (spent === 0 && share === 0) return null;
+
+        // Create initials for chart (First Last -> FL)
+        const shortName = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+
+        const balance = share - spent;
+
+        return {
+            uid: ids[0], // Use first ID as key
+            name,
+            shortName,
+            Spent: spent,
+            Share: share,
+            Balance: balance
+        };
+    }).filter(Boolean); // Remote nulls
 
     return (
         <ProtectedRoute>
@@ -87,25 +144,101 @@ export default function AnalyticsPage() {
                         <CardTitle>Total Trip Cost</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-4xl font-bold text-primary">₹{totalSpent.toFixed(2)}</div>
+                        <div className="text-4xl font-bold text-primary">₹{totalSpent.toFixed(0)}</div>
                     </CardContent>
                 </Card>
 
-                {/* ... pie chart ... */}
+                {/* Spending vs Share Chart */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Spending vs Share</CardTitle>
+                        <CardDescription>Compare what you Paid vs your Actual Share</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={financialData as any[]} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="shortName" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                                    <Tooltip
+                                        labelFormatter={(label, payload) => {
+                                            if (payload && payload.length > 0) {
+                                                return payload[0].payload.name;
+                                            }
+                                            return label;
+                                        }}
+                                        formatter={(value: any) => `₹${Number(value || 0).toFixed(0)}`}
+                                        cursor={{ fill: 'transparent' }}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Spent" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="Share" fill="#f97316" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Category Pie Chart */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Category Breakdown</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={pieChartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {pieChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: any) => `₹${Number(value || 0).toFixed(0)}`} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Spender Breakdown</CardTitle>
+                        <CardTitle>Detailed Breakdown</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ul className="space-y-2">
-                            {Object.entries(spenderData).map(([userId, amount]) => (
-                                <li key={userId} className="flex justify-between border-b pb-2">
-                                    <span>{userMap[userId] || "Unknown"}</span>
-                                    <span className="font-bold">₹{amount.toFixed(2)}</span>
-                                </li>
+                        <div className="space-y-4">
+                            {financialData?.map((data: any) => (
+                                <div key={data.uid} className="flex justify-between items-center border-b pb-2">
+                                    <div>
+                                        <p className="font-medium">{data.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Paid: <span className="text-green-600 font-semibold">₹{data.Spent.toFixed(0)}</span>
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-muted-foreground">Share: ₹{data.Share.toFixed(0)}</p>
+                                        {data.Balance > 0 ? (
+                                            <p className="text-sm font-bold text-red-600">
+                                                To Pay: ₹{data.Balance.toFixed(0)}
+                                            </p>
+                                        ) : (
+                                            <p className="text-sm font-bold text-green-600">
+                                                Gets Back: ₹{Math.abs(data.Balance).toFixed(0)}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -24,6 +24,7 @@ export const APPWRITE_CONFIG = {
     EXPENSES_COLLECTION_ID: process.env.NEXT_PUBLIC_APPWRITE_EXPENSES_COLLECTION_ID || 'expenses',
     DELETE_REQUESTS_COLLECTION_ID: process.env.NEXT_PUBLIC_APPWRITE_DELETE_REQUESTS_COLLECTION_ID || 'deleteRequests',
     BUCKET_ID: process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID || 'receipts',
+    SETTINGS_DOC_ID: 'settings_categories', // Fixed ID for storing settings
 };
 
 export { client };

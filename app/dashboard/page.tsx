@@ -32,7 +32,7 @@ export default function DashboardPage() {
                 APPWRITE_CONFIG.EXPENSES_COLLECTION_ID,
                 [Query.orderDesc("timestamp"), Query.limit(100)]
             );
-            return response.documents as unknown as Expense[];
+            return (response.documents as unknown as Expense[]).filter(e => e.category !== 'SETTINGS');
         } catch (error) {
             console.error("Failed to fetch expenses", error);
             return [];
