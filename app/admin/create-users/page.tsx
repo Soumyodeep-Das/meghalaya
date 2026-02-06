@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { ID, Query } from "appwrite";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { Copy } from "lucide-react";
 
 interface NewUser {
     name: string;
@@ -129,8 +130,21 @@ export default function AdminCreateUsers() {
                                     onChange={(e) => handleUpdateName(i, e.target.value)}
                                 />
                                 {u.key && (
-                                    <div className="p-2 bg-muted rounded text-center font-mono text-lg tracking-widest">
-                                        {u.key}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 p-2 bg-muted rounded text-center font-mono text-lg tracking-widest">
+                                            {u.key}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(u.key);
+                                                toast.success("Key copied!");
+                                            }}
+                                            title="Copy Key"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>

@@ -30,7 +30,7 @@ export default function AddExpensePage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [paymentMode, setPaymentMode] = useState("online");
-    const [availableCategories, setAvailableCategories] = useState<string[]>(["food", "fuel", "hotel", "misc"]);
+    const [availableCategories, setAvailableCategories] = useState<string[]>(["food", "transport", "hotel", "misc"]);
 
     useEffect(() => {
         if (userMeta) {
@@ -202,7 +202,7 @@ export default function AddExpensePage() {
                                 <Label htmlFor="purpose">Purpose</Label>
                                 <Input
                                     id="purpose"
-                                    placeholder="Dinner, Fuel, etc."
+                                    placeholder="Dinner, Transport, etc."
                                     required
                                     value={purpose}
                                     onChange={(e) => setPurpose(e.target.value)}

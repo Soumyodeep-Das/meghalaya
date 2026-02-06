@@ -39,7 +39,7 @@ export function ExpenseCard({ expense, currentUser, userMap, userCount, viewMode
 
     const categoryColors = {
         food: "bg-orange-100 text-orange-800",
-        fuel: "bg-blue-100 text-blue-800",
+        transport: "bg-blue-100 text-blue-800",
         hotel: "bg-purple-100 text-purple-800",
         misc: "bg-gray-100 text-gray-800",
     };
