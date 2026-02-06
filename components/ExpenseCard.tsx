@@ -7,17 +7,23 @@ import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
 import { ExpenseDetailsDialog } from "./ExpenseDetailsDialog";
 
+import { calculateShare } from "@/lib/utils";
+
 interface ExpenseCardProps {
     expense: Expense;
     currentUser: UserMeta | null;
     userMap: Record<string, string>;
+    userCount: number;
+    viewMode?: "all" | "mine" | "shares";
     onDelete: (id: string) => void;
     onRequestDelete: (id: string) => void;
+    onUpdateStatus: (expenseId: string, newStatus: string) => Promise<void>;
 }
 
-export function ExpenseCard({ expense, currentUser, userMap, onDelete, onRequestDelete }: ExpenseCardProps) {
+export function ExpenseCard({ expense, currentUser, userMap, userCount, viewMode = 'all', onDelete, onRequestDelete, onUpdateStatus }: ExpenseCardProps) {
     const isOwner = currentUser?.$id === expense.createdBy; // Check against Doc ID
     const isAdmin = currentUser?.role === "admin";
+    // ... (handleDelete same)
 
     const handleDelete = () => {
         if (isAdmin) {
@@ -39,15 +45,36 @@ export function ExpenseCard({ expense, currentUser, userMap, onDelete, onRequest
     };
 
     const spenderName = userMap[expense.spentBy] || "Unknown";
+    const myShare = calculateShare(expense, currentUser?.$id || "", userCount);
+
+    // Logic for display amount
+    const isShareView = viewMode === 'shares';
+    const displayAmount = isShareView ? myShare : expense.amount;
+    const isPaidByMe = expense.spentBy === currentUser?.$id;
 
     return (
         <Card className="mb-4 relative">
-            <ExpenseDetailsDialog expense={expense} userMap={userMap}>
+            <ExpenseDetailsDialog expense={expense} userMap={userMap} currentUser={currentUser} onUpdateStatus={onUpdateStatus} userCount={userCount}>
                 <div className="cursor-pointer transition-colors hover:bg-muted/30">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg font-bold">₹{expense.amount.toFixed(2)}</CardTitle>
+                            <CardTitle className={cn("text-lg font-bold", isShareView && "text-orange-600")}>
+                                {isShareView && <span className="mr-1">My Share:</span>}
+                                ₹{displayAmount.toFixed(0)}
+                            </CardTitle>
                             <CardDescription>{new Date(expense.timestamp).toLocaleDateString()}</CardDescription>
+
+                            {!isShareView && myShare > 0 && (
+                                <p className="text-sm font-semibold text-orange-600 mt-1">
+                                    My Share: ₹{myShare.toFixed(0)}
+                                </p>
+                            )}
+
+                            {isShareView && (
+                                <p className="text-sm font-semibold text-black mt-1">
+                                    Trip Total: ₹{expense.amount.toFixed(0)}
+                                </p>
+                            )}
                         </div>
                         <span className={cn("px-2 py-1 rounded text-xs uppercase font-bold", categoryColors[expense.category as keyof typeof categoryColors])}>
                             {expense.category}

@@ -29,6 +29,7 @@ export default function AddExpensePage() {
     const [spentBy, setSpentBy] = useState("");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [paymentMode, setPaymentMode] = useState("online");
 
     useEffect(() => {
         if (userMeta) {
@@ -72,15 +73,29 @@ export default function AddExpensePage() {
 
         setLoading(true);
 
+        // Calculate initial repayment status
+        const initialRepaymentStatus: Record<string, string> = {};
+        const involvedUsers = splitMode === 'equal' ? users.map(u => u.$id) : splitAmong;
+
+        involvedUsers.forEach(uid => {
+            if (uid === spentBy) {
+                initialRepaymentStatus[uid] = "paid";
+            } else {
+                initialRepaymentStatus[uid] = "due";
+            }
+        });
+
         const expenseData = {
-            createdBy: userMeta?.$id || "unknown", // Use Doc ID
-            spentBy: spentBy || userMeta?.$id, // Use Doc ID
+            createdBy: userMeta?.$id || "unknown",
+            spentBy: spentBy || userMeta?.$id,
             amount: parseFloat(amount),
             purpose,
             category,
             splitMode,
             splitAmong: splitMode === 'equal' ? [] : splitAmong,
             receipt: null,
+            paymentMode,
+            repaymentStatus: JSON.stringify(initialRepaymentStatus),
             timestamp: Date.now(),
         };
 
@@ -121,20 +136,30 @@ export default function AddExpensePage() {
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
 
-                            <div className="space-y-2">
-                                <Label>Who Paid?</Label>
-                                <select
-                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={spentBy}
-                                    onChange={(e) => setSpentBy(e.target.value)}
-                                >
-                                    {users.map(u => (
-                                        <option key={u.$id} value={u.$id}>
-                                            {u.name} {u.userId === userMeta?.userId ? "(You)" : ""}
-                                        </option>
-                                    ))}
-                                    {users.length === 0 && <option value={userMeta?.$id || ""}>Loading users...</option>}
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Who Paid?</Label>
+                                    <select
+                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        value={spentBy}
+                                        onChange={(e) => setSpentBy(e.target.value)}
+                                    >
+                                        {users.map(u => (
+                                            <option key={u.$id} value={u.$id}>
+                                                {u.name} {u.userId === userMeta?.userId ? "(You)" : ""}
+                                            </option>
+                                        ))}
+                                        {users.length === 0 && <option value={userMeta?.$id || ""}>Loading users...</option>}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Payment Mode</Label>
+                                    <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}>
+                                        <option value="online">Online</option>
+                                        <option value="offline">Cash / Offline</option>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="space-y-2">

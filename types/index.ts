@@ -18,6 +18,8 @@ export interface Expense {
     splitMode: "equal" | "custom";
     splitAmong: string[]; // array of userIds
     receipt: string | null; // URL or File ID
+    paymentMode: "online" | "offline";
+    repaymentStatus: string; // JSON string of Record<userId, "paid" | "due">
     timestamp: number;
 }
 
