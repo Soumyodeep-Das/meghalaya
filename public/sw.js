@@ -1,11 +1,12 @@
-const CACHE_NAME = 'meghalaya-v1';
+const CACHE_NAME = 'meghalaya-v2';
 const URLS_TO_CACHE = [
     '/',
     '/dashboard',
     '/add',
     '/analytics',
     '/offline.html',
-    '/manifest.json'
+    '/manifest.json',
+    '/faaah.mp3'
 ];
 
 self.addEventListener('install', (event) => {

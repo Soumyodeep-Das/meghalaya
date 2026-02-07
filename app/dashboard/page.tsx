@@ -279,7 +279,14 @@ export default function DashboardPage() {
                 </main>
 
                 {/* Floating Action Button */}
-                <Link href="/add" className="fixed bottom-6 right-6">
+                <Link
+                    href="/add"
+                    className="fixed bottom-6 right-6"
+                    onClick={() => {
+                        const audio = new Audio('/faaah.mp3');
+                        audio.play().catch(e => console.error("Audio play failed", e));
+                    }}
+                >
                     <Button size="icon" className="h-14 w-14 rounded-full shadow-lg">
                         <Plus className="h-6 w-6" />
                     </Button>
