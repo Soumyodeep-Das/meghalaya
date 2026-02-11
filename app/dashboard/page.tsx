@@ -112,6 +112,11 @@ export default function DashboardPage() {
         }
     }, [expenses, userMap, userCount, isOnline]);
 
+    useEffect(() => {
+        const audio = new Audio('/kyu-re-cid.mp3');
+        audio.play().catch(e => console.error("Audio play failed", e));
+    }, []);
+
 
     const handleDelete = async (id: string) => {
         try {

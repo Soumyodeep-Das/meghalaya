@@ -55,6 +55,11 @@ export default function AnalyticsPage() {
         }
     }, []);
 
+    useEffect(() => {
+        const audio = new Audio('/cid-acp-bc.mp3');
+        audio.play().catch(e => console.error("Audio play failed", e));
+    }, []);
+
     if (loading) {
         return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
     }
