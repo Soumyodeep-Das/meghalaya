@@ -114,7 +114,12 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const audio = new Audio('/kyu-re-cid.mp3');
-        audio.play().catch(e => console.error("Audio play failed", e));
+        audio.play().catch(e => {
+            // Ignore autoplay policy errors
+            if (e.name !== 'NotAllowedError') {
+                console.error("Audio play failed", e);
+            }
+        });
     }, []);
 
 

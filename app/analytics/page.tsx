@@ -57,7 +57,12 @@ export default function AnalyticsPage() {
 
     useEffect(() => {
         const audio = new Audio('/cid-acp-bc.mp3');
-        audio.play().catch(e => console.error("Audio play failed", e));
+        audio.play().catch(e => {
+            // Ignore autoplay policy errors
+            if (e.name !== 'NotAllowedError') {
+                console.error("Audio play failed", e);
+            }
+        });
     }, []);
 
     if (loading) {
