@@ -6,6 +6,7 @@ export interface UserMeta {
     role: "admin" | "user";
     tripKey: string;
     createdBy: string;
+    status?: "active" | "left";
 }
 
 export interface Expense {

@@ -28,7 +28,7 @@ export default function SignupPage() {
             await account.createEmailPasswordSession(email, password);
             await refreshAuth();
             toast.success("Account created!");
-            router.push("/");
+            router.push("/setup");
         } catch (error: any) {
             console.error(error);
             toast.error(error.message || "Signup failed");

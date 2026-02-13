@@ -45,8 +45,24 @@ export default function TripKeyPage() {
             const doc = response.documents[0];
 
             if (doc.userId && !doc.userId.startsWith("placeholder")) {
-                // If userId is real (doesn't start with placeholder), it's claimed
-                throw new Error("This key has already been claimed.");
+                // If userId matches the current user, allow them to re-join (e.g. if they were marked "left")
+                if (doc.userId === user.$id) {
+                    await databases.updateDocument(
+                        APPWRITE_CONFIG.DATABASE_ID,
+                        APPWRITE_CONFIG.USERS_COLLECTION_ID,
+                        doc.$id,
+                        {
+                            status: "active"
+                        }
+                    );
+                    await refreshAuth();
+                    toast.success("Welcome back! You have rejoined the trip.");
+                    router.push("/dashboard");
+                    return;
+                } else {
+                    // If userId is real but doesn't match, it's claimed by someone else
+                    throw new Error("This key has already been claimed.");
+                }
             }
 
             // Update the document with the real User ID
@@ -55,7 +71,8 @@ export default function TripKeyPage() {
                 APPWRITE_CONFIG.USERS_COLLECTION_ID,
                 doc.$id,
                 {
-                    userId: user.$id
+                    userId: user.$id,
+                    status: "active"
                 }
             );
 

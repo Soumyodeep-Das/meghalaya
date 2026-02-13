@@ -54,9 +54,10 @@ export default function AddExpensePage() {
                     ).catch(() => null) // Ignore mismatch/404
                 ]);
 
-                setUsers(userResponse.documents);
+                const activeUsers = userResponse.documents.filter((u: any) => u.status !== 'left');
+                setUsers(activeUsers);
                 // Default split among everyone (using immutable Doc IDs)
-                setSplitAmong(userResponse.documents.map((u: any) => u.$id));
+                setSplitAmong(activeUsers.map((u: any) => u.$id));
 
                 // Cache users
                 localStorage.setItem("users_list_cache", JSON.stringify(userResponse.documents));
@@ -81,8 +82,9 @@ export default function AddExpensePage() {
                 const cachedUsers = localStorage.getItem("users_list_cache");
                 if (cachedUsers) {
                     const parsedUsers = JSON.parse(cachedUsers);
-                    setUsers(parsedUsers);
-                    setSplitAmong(parsedUsers.map((u: any) => u.$id));
+                    const activeUsers = parsedUsers.filter((u: any) => u.status !== 'left');
+                    setUsers(activeUsers);
+                    setSplitAmong(activeUsers.map((u: any) => u.$id));
                     toast("Using offline data for users", { icon: "📡" });
                 }
                 const cachedCategories = localStorage.getItem("categories_cache");
@@ -101,8 +103,9 @@ export default function AddExpensePage() {
             const cachedUsers = localStorage.getItem("users_list_cache");
             if (cachedUsers) {
                 const parsedUsers = JSON.parse(cachedUsers);
-                setUsers(parsedUsers);
-                setSplitAmong(parsedUsers.map((u: any) => u.$id));
+                const activeUsers = parsedUsers.filter((u: any) => u.status !== 'left');
+                setUsers(activeUsers);
+                setSplitAmong(activeUsers.map((u: any) => u.$id));
                 toast("Using offline data (fetch failed)", { icon: "📡" });
             }
             const cachedCategories = localStorage.getItem("categories_cache");
